@@ -10,4 +10,7 @@ export type Profile = {
   role: UserRole;
   clientId: string | null;
   accountStatus: AccountStatus;
+  toolTokens: number;
+  qrDownloadCount: number;
+  backgroundRemovalDownloadCount: number;
 };

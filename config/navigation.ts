@@ -26,13 +26,13 @@ export const dashboardNavigation: NavigationItem[] = [
     roles: ["admin", "team_member", "client"]
   },
   {
-    label: "Clients",
+    label: "Client Orgs",
     href: "/dashboard/clients",
     icon: Users,
     roles: ["admin", "team_member"]
   },
   {
-    label: "Users",
+    label: "User Accounts",
     href: "/dashboard/users",
     icon: UserCog,
     roles: ["admin"]

@@ -5,6 +5,7 @@ export type AccountStatus = "active" | "inactive";
 export type ProjectStatus = "not_started" | "in_progress" | "completed" | "on_hold";
 export type TaskStatus = "todo" | "in_progress" | "completed" | "blocked";
 export type NotificationStatus = "pending" | "sent" | "failed";
+export type ToolKey = "qr_generator" | "background_remover";
 
 export type Database = {
   public: {
@@ -18,6 +19,7 @@ export type Database = {
           role: UserRole;
           client_id: string | null;
           account_status: AccountStatus;
+          tool_tokens: number;
           created_at: string;
           updated_at: string;
         };
@@ -29,6 +31,7 @@ export type Database = {
           role: UserRole;
           client_id?: string | null;
           account_status?: AccountStatus;
+          tool_tokens?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -39,6 +42,7 @@ export type Database = {
           role?: UserRole;
           client_id?: string | null;
           account_status?: AccountStatus;
+          tool_tokens?: number;
           updated_at?: string;
         };
         Relationships: [];
@@ -50,6 +54,7 @@ export type Database = {
           contact_person: string | null;
           email: string;
           phone_number: string | null;
+          created_by_profile_id: string | null;
           login_access: boolean;
           account_status: AccountStatus;
           created_at: string;
@@ -61,6 +66,7 @@ export type Database = {
           contact_person?: string | null;
           email: string;
           phone_number?: string | null;
+          created_by_profile_id?: string | null;
           login_access?: boolean;
           account_status?: AccountStatus;
           created_at?: string;
@@ -71,6 +77,7 @@ export type Database = {
           contact_person?: string | null;
           email?: string;
           phone_number?: string | null;
+          created_by_profile_id?: string | null;
           login_access?: boolean;
           account_status?: AccountStatus;
           updated_at?: string;
@@ -194,6 +201,68 @@ export type Database = {
           recipient_email?: string;
           status?: NotificationStatus;
           sent_at?: string | null;
+        };
+        Relationships: [];
+      };
+      tool_download_events: {
+        Row: {
+          id: string;
+          profile_id: string;
+          tool: ToolKey;
+          tokens_spent: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          profile_id: string;
+          tool: ToolKey;
+          tokens_spent: number;
+          created_at?: string;
+        };
+        Update: {
+          profile_id?: string;
+          tool?: ToolKey;
+          tokens_spent?: number;
+        };
+        Relationships: [];
+      };
+      tool_settings: {
+        Row: {
+          id: string;
+          default_client_tokens: number;
+          qr_download_cost: number;
+          background_remover_download_cost: number;
+          price_per_10_tokens_rm: number;
+          bank_name: string;
+          bank_account_number: string;
+          bank_account_name: string;
+          whatsapp_number: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          default_client_tokens?: number;
+          qr_download_cost?: number;
+          background_remover_download_cost?: number;
+          price_per_10_tokens_rm?: number;
+          bank_name?: string;
+          bank_account_number?: string;
+          bank_account_name?: string;
+          whatsapp_number?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          default_client_tokens?: number;
+          qr_download_cost?: number;
+          background_remover_download_cost?: number;
+          price_per_10_tokens_rm?: number;
+          bank_name?: string;
+          bank_account_number?: string;
+          bank_account_name?: string;
+          whatsapp_number?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };

@@ -4,6 +4,10 @@ export function canManageClients(profile: Profile | null) {
   return profile?.role === "admin";
 }
 
+export function canCreateClients(profile: Profile | null) {
+  return profile?.role === "admin" || profile?.role === "team_member";
+}
+
 export function canCreateProjects(profile: Profile | null) {
   return profile?.role === "admin";
 }

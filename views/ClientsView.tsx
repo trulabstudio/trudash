@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { listClients } from "@/features/clients/actions/client.action";
 import { getCurrentProfile } from "@/features/users/actions/user.action";
-import { canManageClients } from "@/lib/permissions/resources";
+import { canCreateClients, canManageClients } from "@/lib/permissions/resources";
 import { ClientCreateSection } from "@/sections/clients/ClientCreateSection";
 import { ClientsListSection } from "@/sections/clients/ClientsListSection";
 
@@ -13,10 +13,10 @@ export async function ClientsView() {
   return (
     <>
       <PageHeader
-        title="Clients"
-        description="Manage client company records and login access status."
+        title="Client Organizations"
+        description="Team Members can create company records here. Only Admin users can create login accounts from User Accounts."
       />
-      {canManageClients(profile) ? <ClientCreateSection /> : null}
+      {canCreateClients(profile) ? <ClientCreateSection /> : null}
       {!profile ? (
         <EmptyState
           title="Application profile required"

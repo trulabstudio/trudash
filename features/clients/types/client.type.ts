@@ -6,6 +6,7 @@ export type Client = {
   contactPerson: string | null;
   email: string;
   phoneNumber: string | null;
+  createdByProfileId: string | null;
   loginAccess: boolean;
   accountStatus: AccountStatus;
   createdAt: string;

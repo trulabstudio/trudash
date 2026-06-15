@@ -18,12 +18,14 @@ type ProfileFormProps = {
 
 export function ProfileForm({ clients }: ProfileFormProps) {
   const [state, action, isPending] = useActionState(createProfileAction, initialState);
-  const { register } = useForm<ProfileFormValues>({
+  const { register, watch } = useForm<ProfileFormValues>({
     defaultValues: {
       role: "team_member",
       accountStatus: "active"
     }
   });
+  const selectedRole = watch("role");
+  const isClientRole = selectedRole === "client";
 
   return (
     <form action={action} className="rounded-md border border-border bg-surface p-5 shadow-soft">
@@ -54,21 +56,28 @@ export function ProfileForm({ clients }: ProfileFormProps) {
             <option value="team_member">Team Member</option>
             <option value="client">Client</option>
           </select>
+          <p className="text-xs leading-5 text-muted-foreground">
+            Admin and Team Member are internal users. Client users must be linked to a client organization.
+          </p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="clientId">Client Company</Label>
+          <Label htmlFor="clientId">Linked Client Organization</Label>
           <select
             id="clientId"
-            className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-foreground"
+            className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+            disabled={!isClientRole}
             {...register("clientId")}
           >
-            <option value="">None</option>
+            <option value="">{isClientRole ? "Select organization" : "Only required for Client users"}</option>
             {clients.map((client) => (
               <option key={client.id} value={client.id}>
                 {client.companyName}
               </option>
             ))}
           </select>
+          <p className="text-xs leading-5 text-muted-foreground">
+            Create the organization in Client Organizations before creating a Client login.
+          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="accountStatus">Account Status</Label>
@@ -84,8 +93,8 @@ export function ProfileForm({ clients }: ProfileFormProps) {
       </div>
       {state.error ? <p className="mt-4 text-sm text-destructive">{state.error}</p> : null}
       {state.success ? <p className="mt-4 text-sm text-primary">{state.success}</p> : null}
-      <Button type="submit" className="mt-5" disabled={isPending}>
-        {isPending ? "Creating" : "Create Profile"}
+      <Button type="submit" className="mt-5 w-full sm:w-auto" disabled={isPending}>
+        {isPending ? "Creating" : "Create Login Profile"}
       </Button>
     </form>
   );

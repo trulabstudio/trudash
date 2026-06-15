@@ -5,6 +5,7 @@ create type public.account_status as enum ('active', 'inactive');
 create type public.project_status as enum ('not_started', 'in_progress', 'completed', 'on_hold');
 create type public.task_status as enum ('todo', 'in_progress', 'completed', 'blocked');
 create type public.notification_status as enum ('pending', 'sent', 'failed');
+create type public.tool_key as enum ('qr_generator', 'background_remover');
 
 create table public.clients (
   id uuid primary key default gen_random_uuid(),
@@ -12,6 +13,7 @@ create table public.clients (
   contact_person text,
   email text not null,
   phone_number text,
+  created_by_profile_id uuid,
   login_access boolean not null default false,
   account_status public.account_status not null default 'active',
   created_at timestamptz not null default now(),
@@ -26,9 +28,14 @@ create table public.profiles (
   role public.user_role not null,
   client_id uuid references public.clients(id) on delete set null,
   account_status public.account_status not null default 'active',
+  tool_tokens integer not null default 0 check (tool_tokens >= 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.clients
+add constraint clients_created_by_profile_id_fkey
+foreign key (created_by_profile_id) references public.profiles(id) on delete set null;
 
 create table public.projects (
   id uuid primary key default gen_random_uuid(),
@@ -74,11 +81,38 @@ create table public.notification_events (
   sent_at timestamptz
 );
 
+create table public.tool_download_events (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null references public.profiles(id) on delete cascade,
+  tool public.tool_key not null,
+  tokens_spent integer not null check (tokens_spent > 0),
+  created_at timestamptz not null default now()
+);
+
+create table public.tool_settings (
+  id text primary key default 'default',
+  default_client_tokens integer not null default 20 check (default_client_tokens >= 0),
+  qr_download_cost integer not null default 1 check (qr_download_cost >= 0),
+  background_remover_download_cost integer not null default 2 check (background_remover_download_cost >= 0),
+  price_per_10_tokens_rm numeric(10,2) not null default 10 check (price_per_10_tokens_rm >= 0),
+  bank_name text not null default 'Maybank',
+  bank_account_number text not null default '552023021990',
+  bank_account_name text not null default 'TRULAB PRODUCTION',
+  whatsapp_number text not null default '60176982032',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+insert into public.tool_settings (id)
+values ('default')
+on conflict (id) do nothing;
+
 create index profiles_user_id_idx on public.profiles(user_id);
 create index profiles_role_idx on public.profiles(role);
 create index profiles_client_id_idx on public.profiles(client_id);
 create unique index profiles_email_unique_idx on public.profiles(email);
 create index clients_email_idx on public.clients(email);
+create index clients_created_by_profile_id_idx on public.clients(created_by_profile_id);
 create index projects_client_id_idx on public.projects(client_id);
 create index projects_status_idx on public.projects(status);
 create index project_assignments_project_id_idx on public.project_assignments(project_id);
@@ -88,6 +122,8 @@ create index tasks_assigned_to_profile_id_idx on public.tasks(assigned_to_profil
 create index tasks_status_idx on public.tasks(status);
 create index notification_events_task_id_idx on public.notification_events(task_id);
 create index notification_events_status_idx on public.notification_events(status);
+create index tool_download_events_profile_id_idx on public.tool_download_events(profile_id);
+create index tool_download_events_tool_idx on public.tool_download_events(tool);
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -113,6 +149,10 @@ for each row execute function public.set_updated_at();
 
 create trigger tasks_set_updated_at
 before update on public.tasks
+for each row execute function public.set_updated_at();
+
+create trigger tool_settings_set_updated_at
+before update on public.tool_settings
 for each row execute function public.set_updated_at();
 
 create or replace function public.current_profile_id()
@@ -161,6 +201,8 @@ alter table public.projects enable row level security;
 alter table public.project_assignments enable row level security;
 alter table public.tasks enable row level security;
 alter table public.notification_events enable row level security;
+alter table public.tool_download_events enable row level security;
+alter table public.tool_settings enable row level security;
 
 create policy "profiles_admin_all"
 on public.profiles
@@ -197,6 +239,32 @@ with check (
   and lower(email) = lower(auth.jwt() ->> 'email')
 );
 
+create policy "tool_download_events_admin_all"
+on public.tool_download_events
+for all
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "tool_download_events_client_own_read"
+on public.tool_download_events
+for select
+to authenticated
+using (profile_id = public.current_profile_id());
+
+create policy "tool_settings_read"
+on public.tool_settings
+for select
+to authenticated
+using (true);
+
+create policy "tool_settings_admin_all"
+on public.tool_settings
+for all
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
 create policy "clients_admin_all"
 on public.clients
 for all
@@ -217,6 +285,24 @@ using (
     where projects.client_id = clients.id
       and project_assignments.profile_id = public.current_profile_id()
   )
+);
+
+create policy "clients_team_created_read"
+on public.clients
+for select
+to authenticated
+using (
+  public.current_user_role() = 'team_member'
+  and created_by_profile_id = public.current_profile_id()
+);
+
+create policy "clients_team_create"
+on public.clients
+for insert
+to authenticated
+with check (
+  public.current_user_role() = 'team_member'
+  and created_by_profile_id = public.current_profile_id()
 );
 
 create policy "clients_client_own_read"

@@ -16,8 +16,8 @@ export async function ClientDetailView({ clientId }: ClientDetailViewProps) {
   return (
     <>
       <PageHeader
-        title="Client Detail"
-        description="View client profile details and linked projects."
+        title="Client Organization"
+        description="View the company record and linked project work. Client login users are managed from User Accounts."
       />
       <ClientDetailSection client={client} projects={clientProjects} />
     </>

@@ -13,8 +13,8 @@ export async function UsersView() {
   return (
     <>
       <PageHeader
-        title="Users"
-        description="Manage application profiles, roles, client links, and account status."
+        title="User Accounts"
+        description="Admin-only area for creating and managing login accounts. Client users should be linked to an existing client organization."
       />
       {!isAdmin(profile?.role) ? (
         <EmptyState
@@ -24,7 +24,7 @@ export async function UsersView() {
       ) : (
         <>
           <ProfileCreateSection clients={clients} />
-          <ProfilesListSection profiles={profiles} />
+          <ProfilesListSection profiles={profiles} clients={clients} />
         </>
       )}
     </>

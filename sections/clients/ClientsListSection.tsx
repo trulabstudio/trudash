@@ -16,22 +16,57 @@ export function ClientsListSection({ clients, canManage = false }: ClientsListSe
   if (clients.length === 0) {
     return (
       <EmptyState
-        title="No clients found"
-        description="Create the first client record after Supabase is configured and an Admin profile is available."
+        title="No client organizations found"
+        description="Create the organization record first, then add Client login users from User Accounts when access is needed."
       />
     );
   }
 
   return (
-    <section className="overflow-hidden rounded-md border border-border bg-surface shadow-soft">
-      <div className="overflow-x-auto">
+    <section>
+      <div className="grid gap-4 md:hidden">
+        {clients.map((client) => (
+          <article key={client.id} className="rounded-md border border-border bg-surface p-5 shadow-soft">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <Link
+                  href={`/dashboard/clients/${client.id}`}
+                  className="text-base font-semibold text-foreground hover:text-primary"
+                >
+                  {client.companyName}
+                </Link>
+                <p className="mt-1 break-words text-sm text-muted-foreground">{client.email}</p>
+              </div>
+              <StatusBadge tone={client.accountStatus === "active" ? "success" : "neutral"}>
+                {accountStatusLabels[client.accountStatus]}
+              </StatusBadge>
+            </div>
+            <dl className="mt-4 grid gap-3 text-sm">
+              <div>
+                <dt className="text-muted-foreground">Contact</dt>
+                <dd className="mt-1 font-medium text-foreground">{client.contactPerson ?? "Not set"}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Phone</dt>
+                <dd className="mt-1 font-medium text-foreground">{client.phoneNumber ?? "Not set"}</dd>
+              </div>
+            </dl>
+            {canManage ? (
+              <div className="mt-4">
+                <DeleteActionForm action={deleteClientAction} fieldName="clientId" id={client.id} />
+              </div>
+            ) : null}
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-md border border-border bg-surface shadow-soft md:block">
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead className="border-b border-border bg-muted text-xs uppercase text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">Company</th>
               <th className="px-4 py-3 font-medium">Contact</th>
               <th className="px-4 py-3 font-medium">Email</th>
-              <th className="px-4 py-3 font-medium">Login</th>
               <th className="px-4 py-3 font-medium">Status</th>
               {canManage ? <th className="px-4 py-3 font-medium">Actions</th> : null}
             </tr>
@@ -46,9 +81,6 @@ export function ClientsListSection({ clients, canManage = false }: ClientsListSe
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">{client.contactPerson ?? "Not set"}</td>
                 <td className="px-4 py-3 text-muted-foreground">{client.email}</td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {client.loginAccess ? "Enabled" : "Disabled"}
-                </td>
                 <td className="px-4 py-3">
                   <StatusBadge tone={client.accountStatus === "active" ? "success" : "neutral"}>
                     {accountStatusLabels[client.accountStatus]}

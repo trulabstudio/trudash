@@ -32,7 +32,7 @@ export function ClientDetailSection({ client, projects }: ClientDetailSectionPro
             {accountStatusLabels[client.accountStatus]}
           </StatusBadge>
         </div>
-        <dl className="mt-5 grid gap-4 text-sm md:grid-cols-3">
+        <dl className="mt-5 grid gap-4 text-sm md:grid-cols-2">
           <div>
             <dt className="text-muted-foreground">Contact Person</dt>
             <dd className="mt-1 font-medium text-foreground">{client.contactPerson ?? "Not set"}</dd>
@@ -40,12 +40,6 @@ export function ClientDetailSection({ client, projects }: ClientDetailSectionPro
           <div>
             <dt className="text-muted-foreground">Phone Number</dt>
             <dd className="mt-1 font-medium text-foreground">{client.phoneNumber ?? "Not set"}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Login Access</dt>
-            <dd className="mt-1 font-medium text-foreground">
-              {client.loginAccess ? "Enabled" : "Disabled"}
-            </dd>
           </div>
         </dl>
       </div>

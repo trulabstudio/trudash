@@ -6,6 +6,8 @@ import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Label } from "@/components/ui/Label";
+import { consumeToolTokensAction } from "@/features/tools/actions/tool-token.action";
+import type { UserRole } from "@/config/roles";
 
 type SizeOption = "original" | "small" | "medium" | "large" | "custom";
 type FormatOption = "png" | "webp" | "jpeg";
@@ -21,7 +23,13 @@ const PRESETS = [
   { name: "4K Square", size: "custom" as SizeOption, w: 4096, h: 4096 }
 ];
 
-export function BackgroundRemoverTool() {
+type BackgroundRemoverToolProps = {
+  initialTokens: number;
+  role: UserRole;
+  downloadCost: number;
+};
+
+export function BackgroundRemoverTool({ initialTokens, role, downloadCost }: BackgroundRemoverToolProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [originalUrl, setOriginalUrl] = useState("");
@@ -31,6 +39,8 @@ export function BackgroundRemoverTool() {
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+  const [tokens, setTokens] = useState(initialTokens);
+  const isClient = role === "client";
 
   const [size, setSize] = useState<SizeOption>("original");
   const [customWidth, setCustomWidth] = useState(1024);
@@ -365,25 +375,34 @@ export function BackgroundRemoverTool() {
             ? "image/webp"
             : "image/jpeg";
 
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) return;
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, mime, quality);
+      });
 
-          const downloadUrl = URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          const originalName =
-            files[activeIndex]?.name.replace(/\.[^/.]+$/, "") || "image";
-          const upscaleName = upscale === "none" ? "" : `-${upscale}`;
+      if (!blob) return;
 
-          link.href = downloadUrl;
-          link.download = `${originalName}-no-bg${upscaleName}.${format}`;
-          link.click();
+      const tokenState = await consumeToolTokensAction("background_remover");
 
-          URL.revokeObjectURL(downloadUrl);
-        },
-        mime,
-        quality
-      );
+      if (tokenState.error) {
+        setError(tokenState.error);
+        return;
+      }
+
+      if (typeof tokenState.remainingTokens === "number") {
+        setTokens(tokenState.remainingTokens);
+      }
+
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const originalName =
+        files[activeIndex]?.name.replace(/\.[^/.]+$/, "") || "image";
+      const upscaleName = upscale === "none" ? "" : `-${upscale}`;
+
+      link.href = downloadUrl;
+      link.download = `${originalName}-no-bg${upscaleName}.${format}`;
+      link.click();
+
+      URL.revokeObjectURL(downloadUrl);
     } catch (err) {
       console.error(err);
       setError("Failed to download image.");
@@ -413,9 +432,17 @@ export function BackgroundRemoverTool() {
             Background Remover
           </h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Prepare client assets, profile images, and delivery graphics with
-            transparent or solid backgrounds.
+            Prepare images with transparent or solid backgrounds.
           </p>
+          {isClient ? (
+            <p className="mt-2 text-xs font-medium text-foreground">
+              Token balance: {tokens} · {downloadCost} token{downloadCost === 1 ? "" : "s"} per download
+            </p>
+          ) : (
+            <p className="mt-2 text-xs font-medium text-foreground">
+              Ready for internal project use
+            </p>
+          )}
         </div>
       </div>
 

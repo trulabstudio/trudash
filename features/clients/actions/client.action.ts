@@ -5,9 +5,10 @@ import { revalidatePath } from "next/cache";
 import { clientDeleteSchema, clientSchema, clientUpdateSchema } from "@/features/clients/schemas/client.schema";
 import type { Client } from "@/features/clients/types/client.type";
 import type { Profile } from "@/features/users/types/user.type";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { canManageClients } from "@/lib/permissions/resources";
+import { hasSupabaseEnv, hasSupabaseServiceRoleKey } from "@/lib/supabase/env";
+import { canCreateClients, canManageClients } from "@/lib/permissions/resources";
 import type { Database } from "@/types/database.type";
 
 type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
@@ -24,6 +25,7 @@ function mapClient(row: ClientRow): Client {
     contactPerson: row.contact_person,
     email: row.email,
     phoneNumber: row.phone_number,
+    createdByProfileId: row.created_by_profile_id,
     loginAccess: row.login_access,
     accountStatus: row.account_status,
     createdAt: row.created_at,
@@ -31,12 +33,23 @@ function mapClient(row: ClientRow): Client {
   };
 }
 
+async function createClientManagementClient() {
+  if (hasSupabaseServiceRoleKey()) {
+    return createAdminClient();
+  }
+
+  return createSupabaseClient();
+}
+
 export async function listClients(profile: Profile | null): Promise<Client[]> {
   if (!hasSupabaseEnv() || !profile) {
     return [];
   }
 
-  const supabase = await createSupabaseClient();
+  const supabase =
+    profile.role === "admin" || profile.role === "team_member"
+      ? await createClientManagementClient()
+      : await createSupabaseClient();
 
   if (profile.role === "admin") {
     const { data } = await supabase.from("clients").select("*").order("created_at", { ascending: false });
@@ -54,19 +67,29 @@ export async function listClients(profile: Profile | null): Promise<Client[]> {
     .eq("profile_id", profile.id);
   const projectIds = assignments?.map((assignment) => assignment.project_id) ?? [];
 
-  if (projectIds.length === 0) {
-    return [];
-  }
-
-  const { data: projects } = await supabase.from("projects").select("client_id").in("id", projectIds);
+  const { data: projects } =
+    projectIds.length > 0
+      ? await supabase.from("projects").select("client_id").in("id", projectIds)
+      : { data: [] as { client_id: string }[] };
   const clientIds = Array.from(new Set(projects?.map((project) => project.client_id) ?? []));
 
-  if (clientIds.length === 0) {
-    return [];
-  }
+  const { data: assignedClients } =
+    clientIds.length > 0
+      ? await supabase.from("clients").select("*").in("id", clientIds)
+      : { data: [] as ClientRow[] };
+  const { data: createdClients } = await supabase
+    .from("clients")
+    .select("*")
+    .eq("created_by_profile_id", profile.id);
+  const clientsById = new Map<string, ClientRow>();
 
-  const { data } = await supabase.from("clients").select("*").in("id", clientIds);
-  return data?.map(mapClient) ?? [];
+  [...(assignedClients ?? []), ...(createdClients ?? [])].forEach((client) => {
+    clientsById.set(client.id, client);
+  });
+
+  return Array.from(clientsById.values())
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .map(mapClient);
 }
 
 export async function getClientById(clientId: string, profile: Profile | null): Promise<Client | null> {
@@ -84,8 +107,12 @@ export async function createClientAction(
 ): Promise<ClientActionState> {
   const profile = await import("@/features/users/actions/user.action").then((mod) => mod.getCurrentProfile());
 
-  if (!canManageClients(profile)) {
-    return { error: "Only Admin users can create clients." };
+  if (!canCreateClients(profile)) {
+    return { error: "Only Admin and Team Member users can create client organizations." };
+  }
+
+  if (profile?.role === "team_member" && !hasSupabaseServiceRoleKey()) {
+    return { error: "SUPABASE_SERVICE_ROLE_KEY is required for Team Members to create client organizations." };
   }
 
   const parsed = clientSchema.safeParse({
@@ -101,12 +128,13 @@ export async function createClientAction(
     return { error: parsed.error.errors[0]?.message ?? "Invalid client details." };
   }
 
-  const supabase = await createSupabaseClient();
+  const supabase = await createClientManagementClient();
   const { error } = await supabase.from("clients").insert({
     company_name: parsed.data.companyName,
     contact_person: parsed.data.contactPerson || null,
     email: parsed.data.email,
     phone_number: parsed.data.phoneNumber || null,
+    created_by_profile_id: profile?.id ?? null,
     login_access: parsed.data.loginAccess,
     account_status: parsed.data.accountStatus
   });

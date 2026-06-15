@@ -3,15 +3,17 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { listClients } from "@/features/clients/actions/client.action";
 import { listProjects } from "@/features/projects/actions/project.action";
 import { listTasks } from "@/features/tasks/actions/task.action";
+import { getToolSettings } from "@/features/tools/lib/tool-settings";
 import { getCurrentProfile } from "@/features/users/actions/user.action";
 import { CoreOverviewSection } from "@/sections/dashboard/CoreOverviewSection";
 
 export async function DashboardOverviewView() {
   const profile = await getCurrentProfile();
-  const [clients, projects, tasks] = await Promise.all([
+  const [clients, projects, tasks, toolSettings] = await Promise.all([
     listClients(profile),
     listProjects(profile),
-    listTasks(profile)
+    listTasks(profile),
+    getToolSettings()
   ]);
   const header =
     profile?.role === "client"
@@ -26,7 +28,7 @@ export async function DashboardOverviewView() {
           }
         : {
             title: "Admin Dashboard",
-            description: "Manage client accounts, project delivery health, task workload, and user access."
+            description: "Manage client organizations, project delivery health, task workload, and user access."
           };
 
   return (
@@ -38,7 +40,13 @@ export async function DashboardOverviewView() {
           description="Create a profile with this user's email in Users. It will link automatically on first login."
         />
       ) : (
-        <CoreOverviewSection profile={profile} clients={clients} projects={projects} tasks={tasks} />
+        <CoreOverviewSection
+          profile={profile}
+          clients={clients}
+          projects={projects}
+          tasks={tasks}
+          toolSettings={toolSettings}
+        />
       )}
     </>
   );

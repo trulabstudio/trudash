@@ -28,11 +28,11 @@ export function ClientForm() {
           <Input id="companyName" {...register("companyName")} required />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="contactPerson">Contact Person</Label>
+          <Label htmlFor="contactPerson">Primary Contact</Label>
           <Input id="contactPerson" {...register("contactPerson")} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">Company Contact Email</Label>
           <Input id="email" type="email" {...register("email")} required />
         </div>
         <div className="space-y-2">
@@ -50,15 +50,15 @@ export function ClientForm() {
             <option value="inactive">Inactive</option>
           </select>
         </div>
-        <label className="flex items-center gap-2 self-end text-sm text-foreground">
-          <input type="checkbox" className="h-4 w-4 accent-primary" {...register("loginAccess")} />
-          Login access enabled
-        </label>
+        <input type="hidden" value="false" {...register("loginAccess")} />
       </div>
+      <p className="mt-4 text-xs leading-5 text-muted-foreground">
+        This creates a company record only. Admin users create login accounts from User Accounts.
+      </p>
       {state.error ? <p className="mt-4 text-sm text-destructive">{state.error}</p> : null}
       {state.success ? <p className="mt-4 text-sm text-primary">{state.success}</p> : null}
-      <Button type="submit" className="mt-5" disabled={isPending}>
-        {isPending ? "Creating" : "Create Client"}
+      <Button type="submit" className="mt-5 w-full sm:w-auto" disabled={isPending}>
+        {isPending ? "Creating" : "Create Client Organization"}
       </Button>
     </form>
   );

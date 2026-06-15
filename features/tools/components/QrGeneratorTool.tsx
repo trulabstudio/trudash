@@ -7,10 +7,18 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
+import { consumeToolTokensAction } from "@/features/tools/actions/tool-token.action";
+import type { UserRole } from "@/config/roles";
 
 type Format = "png" | "jpg" | "svg";
 
-export function QrGeneratorTool() {
+type QrGeneratorToolProps = {
+  initialTokens: number;
+  role: UserRole;
+  downloadCost: number;
+};
+
+export function QrGeneratorTool({ initialTokens, role, downloadCost }: QrGeneratorToolProps) {
   const [url, setUrl] = useState("");
   const [qrPreview, setQrPreview] = useState("");
   const [format, setFormat] = useState<Format>("png");
@@ -18,6 +26,8 @@ export function QrGeneratorTool() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [transparent, setTransparent] = useState(false);
+  const [tokens, setTokens] = useState(initialTokens);
+  const isClient = role === "client";
 
   const qrColor = {
     dark: "#000000",
@@ -75,6 +85,17 @@ export function QrGeneratorTool() {
         });
 
         const objectUrl = URL.createObjectURL(blob);
+        const tokenState = await consumeToolTokensAction("qr_generator");
+
+        if (tokenState.error) {
+          URL.revokeObjectURL(objectUrl);
+          setError(tokenState.error);
+          return;
+        }
+
+        if (typeof tokenState.remainingTokens === "number") {
+          setTokens(tokenState.remainingTokens);
+        }
 
         const link = document.createElement("a");
         link.href = objectUrl;
@@ -93,6 +114,17 @@ export function QrGeneratorTool() {
       });
 
       if (format === "png") {
+        const tokenState = await consumeToolTokensAction("qr_generator");
+
+        if (tokenState.error) {
+          setError(tokenState.error);
+          return;
+        }
+
+        if (typeof tokenState.remainingTokens === "number") {
+          setTokens(tokenState.remainingTokens);
+        }
+
         const link = document.createElement("a");
         link.href = pngDataUrl;
         link.download = `qr-code-${size}${transparent ? "-transparent" : ""}.png`;
@@ -102,7 +134,7 @@ export function QrGeneratorTool() {
 
       const image = new Image();
 
-      image.onload = () => {
+      image.onload = async () => {
         const canvas = document.createElement("canvas");
 
         canvas.width = size;
@@ -117,6 +149,16 @@ export function QrGeneratorTool() {
         context.drawImage(image, 0, 0, size, size);
 
         const jpg = canvas.toDataURL("image/jpeg", 1);
+        const tokenState = await consumeToolTokensAction("qr_generator");
+
+        if (tokenState.error) {
+          setError(tokenState.error);
+          return;
+        }
+
+        if (typeof tokenState.remainingTokens === "number") {
+          setTokens(tokenState.remainingTokens);
+        }
 
         const link = document.createElement("a");
         link.href = jpg;
@@ -145,9 +187,17 @@ export function QrGeneratorTool() {
           </h2>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Convert client delivery links, preview pages, or project URLs into
-            downloadable QR codes.
+            Convert project URLs into downloadable QR codes.
           </p>
+          {isClient ? (
+            <p className="mt-2 text-xs font-medium text-foreground">
+              Token balance: {tokens} · {downloadCost} token{downloadCost === 1 ? "" : "s"} per download
+            </p>
+          ) : (
+            <p className="mt-2 text-xs font-medium text-foreground">
+              Ready for internal project use
+            </p>
+          )}
         </div>
       </div>
 

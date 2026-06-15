@@ -11,6 +11,7 @@ type DashboardNavProps = {
     label: string;
     href: string;
   }[];
+  variant?: "sidebar" | "mobile";
 };
 
 const iconsByHref = {
@@ -24,11 +25,17 @@ const iconsByHref = {
   "/dashboard/settings": Settings
 };
 
-export function DashboardNav({ items }: DashboardNavProps) {
+export function DashboardNav({ items, variant = "sidebar" }: DashboardNavProps) {
   const pathname = usePathname();
 
   return (
-    <nav className="space-y-1">
+    <nav
+      className={cn(
+        variant === "sidebar" && "space-y-1",
+        variant === "mobile" && "flex gap-2 overflow-x-auto pb-1"
+      )}
+      aria-label="Dashboard navigation"
+    >
       {items.map((item) => {
         const Icon = iconsByHref[item.href as keyof typeof iconsByHref] ?? BarChart3;
         const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
@@ -40,6 +47,7 @@ export function DashboardNav({ items }: DashboardNavProps) {
             aria-current={isActive ? "page" : undefined}
             className={cn(
               "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition",
+              variant === "mobile" && "shrink-0 border border-border bg-surface",
               isActive
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"

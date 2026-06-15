@@ -4,6 +4,8 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { Client } from "@/features/clients/types/client.type";
 import type { Project } from "@/features/projects/types/project.type";
 import type { Task } from "@/features/tasks/types/task.type";
+import { TokenTopUpPanel } from "@/features/tools/components/TokenTopUpPanel";
+import type { ToolSettings } from "@/features/tools/lib/tool-settings";
 import type { Profile } from "@/features/users/types/user.type";
 
 type CoreOverviewSectionProps = {
@@ -11,12 +13,13 @@ type CoreOverviewSectionProps = {
   clients: Client[];
   projects: Project[];
   tasks: Task[];
+  toolSettings: ToolSettings;
 };
 
 const roleContent = {
   admin: {
     title: "Operations Control Center",
-    objective: "Monitor every client account, delivery workload, and project risk from one place.",
+    objective: "Monitor every client organization, delivery workload, and project risk from one place.",
     primaryAction: "Create and assign work before delivery progress becomes blocked.",
     badge: "Admin"
   },
@@ -34,7 +37,7 @@ const roleContent = {
   }
 };
 
-export function CoreOverviewSection({ profile, clients, projects, tasks }: CoreOverviewSectionProps) {
+export function CoreOverviewSection({ profile, clients, projects, tasks, toolSettings }: CoreOverviewSectionProps) {
   const completedTasks = tasks.filter((task) => task.status === "completed").length;
   const openTasks = tasks.filter((task) => task.status !== "completed").length;
   const blockedTasks = tasks.filter((task) => task.status === "blocked").length;
@@ -51,7 +54,8 @@ export function CoreOverviewSection({ profile, clients, projects, tasks }: CoreO
       ? [
           { label: "Active Projects", value: activeProjects, note: `${averageProgress}% average progress` },
           { label: "Open Tasks", value: openTasks, note: "Still in progress or waiting" },
-          { label: "Delivery Links", value: deliveryLinks.length, note: "Ready to open" }
+          { label: "Delivery Links", value: deliveryLinks.length, note: "Ready to open" },
+          { label: "Tool Tokens", value: profile.toolTokens, note: "For QR and background downloads" }
         ]
       : profile.role === "team_member"
         ? [
@@ -60,7 +64,7 @@ export function CoreOverviewSection({ profile, clients, projects, tasks }: CoreO
             { label: "Blocked Tasks", value: blockedTasks, note: "Needs attention" }
           ]
         : [
-            { label: "Clients", value: clients.length, note: "Managed accounts" },
+            { label: "Client Orgs", value: clients.length, note: "Managed organizations" },
             { label: "Projects", value: projects.length, note: `${averageProgress}% average progress` },
             { label: "Tasks", value: tasks.length, note: `${completedTasks} completed` }
           ];
@@ -82,7 +86,9 @@ export function CoreOverviewSection({ profile, clients, projects, tasks }: CoreO
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      {profile.role === "client" ? <TokenTopUpPanel tokens={profile.toolTokens} settings={toolSettings} compact /> : null}
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (
           <article key={stat.label} className="rounded-md border border-border bg-surface p-5 shadow-soft">
             <p className="text-sm text-muted-foreground">{stat.label}</p>
