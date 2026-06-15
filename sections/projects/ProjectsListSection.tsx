@@ -35,6 +35,9 @@ export function ProjectsListSection({ projects, canManage = false }: ProjectsLis
                 {project.projectName}
               </Link>
               <p className="mt-1 text-sm text-muted-foreground">{project.clientName ?? "Client not set"}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Due date: {project.dueDate ?? "Not set"}
+              </p>
             </div>
             <StatusBadge tone={project.status === "completed" ? "success" : "neutral"}>
               {projectStatusLabels[project.status]}

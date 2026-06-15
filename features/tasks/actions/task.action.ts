@@ -49,6 +49,22 @@ function mapTask(row: TaskSelectRow, projects: ProjectRow[], clients: ClientRow[
   };
 }
 
+function compareByDueDate(a: Task, b: Task) {
+  if (a.dueDate && b.dueDate) {
+    return a.dueDate.localeCompare(b.dueDate);
+  }
+
+  if (a.dueDate) {
+    return -1;
+  }
+
+  if (b.dueDate) {
+    return 1;
+  }
+
+  return b.createdAt.localeCompare(a.createdAt);
+}
+
 export async function listTasks(profile: Profile | null, projectId?: string): Promise<Task[]> {
   if (!hasSupabaseEnv() || !profile) {
     return [];
@@ -103,7 +119,9 @@ export async function listTasks(profile: Profile | null, projectId?: string): Pr
       ? await supabase.from("clients").select("*").in("id", clientIds)
       : { data: [] as ClientRow[] };
 
-  return ((tasks ?? []) as TaskSelectRow[]).map((task) => mapTask(task, projects ?? [], clients ?? [], profile));
+  return ((tasks ?? []) as TaskSelectRow[])
+    .map((task) => mapTask(task, projects ?? [], clients ?? [], profile))
+    .sort(compareByDueDate);
 }
 
 export async function createTaskAction(_: TaskActionState, formData: FormData): Promise<TaskActionState> {

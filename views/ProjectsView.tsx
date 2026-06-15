@@ -15,7 +15,7 @@ export async function ProjectsView() {
     <>
       <PageHeader
         title="Projects"
-        description="Manage projects by client and monitor task-based progress."
+        description="Manage projects by client and monitor task-based progress. Projects are sorted by nearest due date."
       />
       {canCreateProjects(profile) ? <ProjectCreateSection clients={clients} /> : null}
       {!profile ? (

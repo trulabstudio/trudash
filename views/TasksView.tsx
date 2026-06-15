@@ -21,7 +21,7 @@ export async function TasksView() {
     <>
       <PageHeader
         title="Tasks"
-        description="Create tasks manually, import tasks by CSV, update status, and manage final delivery links."
+        description="Create tasks manually, import tasks by CSV, update status, and manage final delivery links. Tasks are sorted by nearest due date."
       />
       {canCreateTasks(profile) ? <TaskCreateSection projects={projects} teamMembers={teamMembers} /> : null}
       {!profile ? (

@@ -4,8 +4,6 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { Client } from "@/features/clients/types/client.type";
 import type { Project } from "@/features/projects/types/project.type";
 import type { Task } from "@/features/tasks/types/task.type";
-import { TokenTopUpPanel } from "@/features/tools/components/TokenTopUpPanel";
-import type { ToolSettings } from "@/features/tools/lib/tool-settings";
 import type { Profile } from "@/features/users/types/user.type";
 
 type CoreOverviewSectionProps = {
@@ -13,7 +11,6 @@ type CoreOverviewSectionProps = {
   clients: Client[];
   projects: Project[];
   tasks: Task[];
-  toolSettings: ToolSettings;
 };
 
 const roleContent = {
@@ -37,7 +34,7 @@ const roleContent = {
   }
 };
 
-export function CoreOverviewSection({ profile, clients, projects, tasks, toolSettings }: CoreOverviewSectionProps) {
+export function CoreOverviewSection({ profile, clients, projects, tasks }: CoreOverviewSectionProps) {
   const completedTasks = tasks.filter((task) => task.status === "completed").length;
   const openTasks = tasks.filter((task) => task.status !== "completed").length;
   const blockedTasks = tasks.filter((task) => task.status === "blocked").length;
@@ -85,8 +82,6 @@ export function CoreOverviewSection({ profile, clients, projects, tasks, toolSet
           </div>
         </div>
       </section>
-
-      {profile.role === "client" ? <TokenTopUpPanel tokens={profile.toolTokens} settings={toolSettings} compact /> : null}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (

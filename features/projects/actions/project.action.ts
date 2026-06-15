@@ -60,6 +60,22 @@ function mapProject(row: ProjectRow, clients: ClientRow[], tasks: TaskRow[]): Pr
   };
 }
 
+function compareByDueDate<T extends { dueDate: string | null; createdAt: string }>(a: T, b: T) {
+  if (a.dueDate && b.dueDate) {
+    return a.dueDate.localeCompare(b.dueDate);
+  }
+
+  if (a.dueDate) {
+    return -1;
+  }
+
+  if (b.dueDate) {
+    return 1;
+  }
+
+  return b.createdAt.localeCompare(a.createdAt);
+}
+
 export async function listProjects(profile: Profile | null): Promise<Project[]> {
   if (!hasSupabaseEnv() || !profile) {
     return [];
@@ -108,7 +124,9 @@ export async function listProjects(profile: Profile | null): Promise<Project[]> 
       ? await supabase.from("tasks").select("*").in("project_id", projectIds)
       : { data: [] as TaskRow[] };
 
-  return projects.map((project) => mapProject(project, clients ?? [], tasks ?? []));
+  return projects
+    .map((project) => mapProject(project, clients ?? [], tasks ?? []))
+    .sort(compareByDueDate);
 }
 
 export async function getProjectById(projectId: string, profile: Profile | null): Promise<Project | null> {
