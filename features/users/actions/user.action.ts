@@ -24,7 +24,7 @@ type ProfileData = Pick<
   ProfileRow,
   "id" | "user_id" | "full_name" | "email" | "role" | "client_id" | "account_status" | "tool_tokens"
 >;
-type ToolDownloadEventRow = Database["public"]["Tables"]["tool_download_events"]["Row"];
+type ToolDownloadCountRow = Database["public"]["Views"]["tool_download_counts"]["Row"];
 
 export type ProfileActionState = {
   error?: string;
@@ -46,30 +46,20 @@ function mapProfile(data: ProfileData): Profile {
   };
 }
 
-function applyDownloadCounts(profiles: Profile[], events: ToolDownloadEventRow[]) {
-  const countsByProfile = new Map<string, { qr: number; background: number }>();
-
-  events.forEach((event) => {
-    const current = countsByProfile.get(event.profile_id) ?? { qr: 0, background: 0 };
-
-    if (event.tool === "qr_generator") {
-      current.qr += 1;
-    }
-
-    if (event.tool === "background_remover") {
-      current.background += 1;
-    }
-
-    countsByProfile.set(event.profile_id, current);
-  });
+function applyDownloadCounts(profiles: Profile[], counts: ToolDownloadCountRow[]) {
+  const countsByProfile = new Map(
+    counts
+      .filter((item): item is ToolDownloadCountRow & { profile_id: string } => Boolean(item.profile_id))
+      .map((item) => [item.profile_id, item])
+  );
 
   return profiles.map((profile) => {
     const counts = countsByProfile.get(profile.id);
 
     return {
       ...profile,
-      qrDownloadCount: counts?.qr ?? 0,
-      backgroundRemovalDownloadCount: counts?.background ?? 0
+      qrDownloadCount: counts?.qr_download_count ?? 0,
+      backgroundRemovalDownloadCount: counts?.background_remover_download_count ?? 0
     };
   });
 }
@@ -149,10 +139,10 @@ export async function listProfiles(currentProfile: Profile | null): Promise<Prof
   const profileIds = profiles.map((profile) => profile.id);
   const { data: events } =
     profileIds.length > 0
-      ? await supabase.from("tool_download_events").select("*").in("profile_id", profileIds)
-      : { data: [] as ToolDownloadEventRow[] };
+      ? await supabase.from("tool_download_counts").select("*").in("profile_id", profileIds)
+      : { data: [] as ToolDownloadCountRow[] };
 
-  return applyDownloadCounts(profiles, events ?? []);
+  return applyDownloadCounts(profiles, (events ?? []) as ToolDownloadCountRow[]);
 }
 
 export async function createProfileAction(

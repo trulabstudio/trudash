@@ -85,7 +85,11 @@ export async function listProjects(profile: Profile | null): Promise<Project[]> 
   let projects: ProjectRow[] = [];
 
   if (profile.role === "admin") {
-    const { data } = await supabase.from("projects").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase
+      .from("projects")
+      .select("*")
+      .order("due_date", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false });
     projects = data ?? [];
   }
 
@@ -94,6 +98,7 @@ export async function listProjects(profile: Profile | null): Promise<Project[]> 
       .from("projects")
       .select("*")
       .eq("client_id", profile.clientId)
+      .order("due_date", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false });
     projects = data ?? [];
   }
@@ -106,7 +111,12 @@ export async function listProjects(profile: Profile | null): Promise<Project[]> 
     const projectIds = assignments?.map((assignment) => assignment.project_id) ?? [];
 
     if (projectIds.length > 0) {
-      const { data } = await supabase.from("projects").select("*").in("id", projectIds);
+      const { data } = await supabase
+        .from("projects")
+        .select("*")
+        .in("id", projectIds)
+        .order("due_date", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: false });
       projects = data ?? [];
     }
   }

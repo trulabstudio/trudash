@@ -114,16 +114,31 @@ create unique index profiles_email_unique_idx on public.profiles(email);
 create index clients_email_idx on public.clients(email);
 create index clients_created_by_profile_id_idx on public.clients(created_by_profile_id);
 create index projects_client_id_idx on public.projects(client_id);
+create index projects_due_date_idx on public.projects(due_date);
+create index projects_client_id_due_date_idx on public.projects(client_id, due_date);
 create index projects_status_idx on public.projects(status);
 create index project_assignments_project_id_idx on public.project_assignments(project_id);
 create index project_assignments_profile_id_idx on public.project_assignments(profile_id);
 create index tasks_project_id_idx on public.tasks(project_id);
+create index tasks_due_date_idx on public.tasks(due_date);
+create index tasks_project_id_due_date_idx on public.tasks(project_id, due_date);
 create index tasks_assigned_to_profile_id_idx on public.tasks(assigned_to_profile_id);
+create index tasks_assigned_to_profile_id_due_date_idx on public.tasks(assigned_to_profile_id, due_date);
 create index tasks_status_idx on public.tasks(status);
 create index notification_events_task_id_idx on public.notification_events(task_id);
 create index notification_events_status_idx on public.notification_events(status);
 create index tool_download_events_profile_id_idx on public.tool_download_events(profile_id);
 create index tool_download_events_tool_idx on public.tool_download_events(tool);
+create index tool_download_events_profile_id_tool_idx on public.tool_download_events(profile_id, tool);
+
+create or replace view public.tool_download_counts as
+select
+  profile_id,
+  count(*) filter (where tool = 'qr_generator')::integer as qr_download_count,
+  count(*) filter (where tool = 'background_remover')::integer as background_remover_download_count,
+  count(*)::integer as total_download_count
+from public.tool_download_events
+group by profile_id;
 
 create or replace function public.set_updated_at()
 returns trigger

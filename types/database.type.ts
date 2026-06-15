@@ -267,7 +267,17 @@ export type Database = {
         Relationships: [];
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      tool_download_counts: {
+        Row: {
+          profile_id: string | null;
+          qr_download_count: number | null;
+          background_remover_download_count: number | null;
+          total_download_count: number | null;
+        };
+        Relationships: [];
+      };
+    };
     Functions: Record<string, never>;
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

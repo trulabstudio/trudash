@@ -56,9 +56,14 @@ export function ProfilesListSection({ profiles, clients }: ProfilesListSectionPr
                 {profile.role === "client" ? <StatusBadge tone="warning">{profile.toolTokens} tokens</StatusBadge> : null}
               </div>
             </div>
-            <div className="mt-4">
-              <ProfileStatusForm profile={profile} clients={clients} />
-            </div>
+            <details className="mt-4 rounded-md border border-border bg-muted p-3">
+              <summary className="cursor-pointer text-sm font-medium text-foreground">
+                Manage user
+              </summary>
+              <div className="mt-4">
+                <ProfileStatusForm profile={profile} clients={clients} />
+              </div>
+            </details>
           </article>
         );
       })}

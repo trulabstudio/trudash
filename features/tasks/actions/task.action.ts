@@ -101,6 +101,7 @@ export async function listTasks(profile: Profile | null, projectId?: string): Pr
             "id,project_id,assigned_to_profile_id,task_name,description,due_date,status,final_link,created_at,updated_at"
           )
           .in("project_id", projectIds)
+          .order("due_date", { ascending: true, nullsFirst: false })
           .order("created_at", { ascending: false })
       : profile.role === "team_member"
         ? await supabase
@@ -108,10 +109,16 @@ export async function listTasks(profile: Profile | null, projectId?: string): Pr
             .select("*")
             .in("project_id", projectIds)
             .eq("assigned_to_profile_id", profile.id)
+            .order("due_date", { ascending: true, nullsFirst: false })
             .order("created_at", { ascending: false })
-        : await supabase.from("tasks").select("*").in("project_id", projectIds).order("created_at", {
-            ascending: false
-          });
+        : await supabase
+            .from("tasks")
+            .select("*")
+            .in("project_id", projectIds)
+            .order("due_date", { ascending: true, nullsFirst: false })
+            .order("created_at", {
+              ascending: false
+            });
   const { data: projects } = await supabase.from("projects").select("*").in("id", projectIds);
   const clientIds = Array.from(new Set(projects?.map((project) => project.client_id) ?? []));
   const { data: clients } =
