@@ -56,7 +56,7 @@ export function HomeView() {
             </div>
 
             <div className="mt-6">
-              <BrandMark size="lg" />
+              <BrandMark size="lg" priority />
             </div>
 
             <h1 className="mt-5 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">

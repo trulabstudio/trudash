@@ -13,6 +13,21 @@ on public.tasks(project_id, due_date);
 create index if not exists tasks_assigned_to_profile_id_due_date_idx
 on public.tasks(assigned_to_profile_id, due_date);
 
+create index if not exists tasks_project_id_status_due_date_idx
+on public.tasks(project_id, status, due_date);
+
+create index if not exists project_assignments_profile_id_idx
+on public.project_assignments(profile_id);
+
+create index if not exists project_assignments_project_id_idx
+on public.project_assignments(project_id);
+
+create index if not exists clients_created_by_profile_id_idx
+on public.clients(created_by_profile_id);
+
+create index if not exists profiles_user_id_idx
+on public.profiles(user_id);
+
 create index if not exists tool_download_events_profile_id_tool_idx
 on public.tool_download_events(profile_id, tool);
 

@@ -6,6 +6,7 @@ export type ProjectStatus = "not_started" | "in_progress" | "completed" | "on_ho
 export type TaskStatus = "todo" | "in_progress" | "completed" | "blocked";
 export type NotificationStatus = "pending" | "sent" | "failed";
 export type ToolKey = "qr_generator" | "background_remover";
+export type ShareResourceType = "project" | "task";
 
 export type Database = {
   public: {
@@ -262,6 +263,40 @@ export type Database = {
           bank_account_number?: string;
           bank_account_name?: string;
           whatsapp_number?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      share_links: {
+        Row: {
+          id: string;
+          token: string;
+          resource_type: ShareResourceType;
+          resource_id: string;
+          created_by_profile_id: string;
+          is_active: boolean;
+          expires_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          token: string;
+          resource_type: ShareResourceType;
+          resource_id: string;
+          created_by_profile_id: string;
+          is_active?: boolean;
+          expires_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          token?: string;
+          resource_type?: ShareResourceType;
+          resource_id?: string;
+          created_by_profile_id?: string;
+          is_active?: boolean;
+          expires_at?: string | null;
           updated_at?: string;
         };
         Relationships: [];

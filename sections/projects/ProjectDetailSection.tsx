@@ -1,6 +1,7 @@
 import { EmptyState } from "@/components/shared/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { projectStatusLabels } from "@/config/status";
+import { ShareLinkForm } from "@/features/sharing/components/ShareLinkForm";
 import type { Project } from "@/features/projects/types/project.type";
 import type { Task } from "@/features/tasks/types/task.type";
 import { TasksListSection } from "@/sections/tasks/TasksListSection";
@@ -8,9 +9,10 @@ import { TasksListSection } from "@/sections/tasks/TasksListSection";
 type ProjectDetailSectionProps = {
   project: Project | null;
   tasks: Task[];
+  canShare?: boolean;
 };
 
-export function ProjectDetailSection({ project, tasks }: ProjectDetailSectionProps) {
+export function ProjectDetailSection({ project, tasks, canShare = false }: ProjectDetailSectionProps) {
   if (!project) {
     return (
       <EmptyState
@@ -44,10 +46,15 @@ export function ProjectDetailSection({ project, tasks }: ProjectDetailSectionPro
             <div className="h-full bg-primary" style={{ width: `${project.progress}%` }} />
           </div>
         </div>
+        {canShare ? (
+          <div className="mt-4">
+            <ShareLinkForm resourceType="project" resourceId={project.id} label="Share Project" />
+          </div>
+        ) : null}
       </div>
       <div>
         <h2 className="mb-3 text-base font-semibold text-foreground">Tasks</h2>
-        <TasksListSection tasks={tasks} />
+        <TasksListSection tasks={tasks} canShare={canShare} />
       </div>
     </section>
   );

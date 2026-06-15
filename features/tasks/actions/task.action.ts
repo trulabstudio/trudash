@@ -22,13 +22,22 @@ type TaskSelectRow = Omit<TaskRow, "internal_notes"> & {
 };
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
 type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
+type TaskProjectRow = Pick<ProjectRow, "id" | "client_id" | "project_name">;
+type TaskClientRow = Pick<ClientRow, "id" | "company_name">;
+
+const taskSelect =
+  "id,project_id,assigned_to_profile_id,task_name,description,due_date,status,final_link,internal_notes,created_at,updated_at";
+const clientTaskSelect =
+  "id,project_id,assigned_to_profile_id,task_name,description,due_date,status,final_link,created_at,updated_at";
+const projectTaskSelect = "id,client_id,project_name";
+const taskClientSelect = "id,company_name";
 
 export type TaskActionState = {
   error?: string;
   success?: string;
 };
 
-function mapTask(row: TaskSelectRow, projects: ProjectRow[], clients: ClientRow[], profile: Profile | null): Task {
+function mapTask(row: TaskSelectRow, projects: TaskProjectRow[], clients: TaskClientRow[], profile: Profile | null): Task {
   const project = projects.find((item) => item.id === row.project_id);
   const client = clients.find((item) => item.id === project?.client_id);
 
@@ -72,12 +81,10 @@ export async function listTasks(profile: Profile | null, projectId?: string): Pr
 
   const supabase = await createSupabaseClient();
   let projectIds: string[] = [];
+  const shouldScopeTasksByProjects = Boolean(projectId) || profile.role !== "admin";
 
   if (projectId) {
     projectIds = [projectId];
-  } else if (profile.role === "admin") {
-    const { data } = await supabase.from("projects").select("id");
-    projectIds = data?.map((project) => project.id) ?? [];
   } else if (profile.role === "client" && profile.clientId) {
     const { data } = await supabase.from("projects").select("id").eq("client_id", profile.clientId);
     projectIds = data?.map((project) => project.id) ?? [];
@@ -89,44 +96,47 @@ export async function listTasks(profile: Profile | null, projectId?: string): Pr
     projectIds = data?.map((assignment) => assignment.project_id) ?? [];
   }
 
-  if (projectIds.length === 0) {
+  if (shouldScopeTasksByProjects && projectIds.length === 0) {
     return [];
   }
 
-  const { data: tasks } =
-    profile.role === "client"
-      ? await supabase
-          .from("tasks")
-          .select(
-            "id,project_id,assigned_to_profile_id,task_name,description,due_date,status,final_link,created_at,updated_at"
-          )
-          .in("project_id", projectIds)
-          .order("due_date", { ascending: true, nullsFirst: false })
-          .order("created_at", { ascending: false })
-      : profile.role === "team_member"
-        ? await supabase
-            .from("tasks")
-            .select("*")
-            .in("project_id", projectIds)
-            .eq("assigned_to_profile_id", profile.id)
-            .order("due_date", { ascending: true, nullsFirst: false })
-            .order("created_at", { ascending: false })
-        : await supabase
-            .from("tasks")
-            .select("*")
-            .in("project_id", projectIds)
-            .order("due_date", { ascending: true, nullsFirst: false })
-            .order("created_at", {
-              ascending: false
-            });
-  const { data: projects } = await supabase.from("projects").select("*").in("id", projectIds);
+  let tasks: TaskSelectRow[] = [];
+
+  if (profile.role === "client") {
+    const { data } = await supabase
+      .from("tasks")
+      .select(clientTaskSelect)
+      .in("project_id", projectIds)
+      .order("due_date", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false });
+    tasks = data ?? [];
+  } else {
+    const baseTaskQuery = supabase
+      .from("tasks")
+      .select(taskSelect)
+      .order("due_date", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false });
+
+    const scopedTaskQuery = shouldScopeTasksByProjects ? baseTaskQuery.in("project_id", projectIds) : baseTaskQuery;
+    const { data } =
+      profile.role === "team_member"
+        ? await scopedTaskQuery.eq("assigned_to_profile_id", profile.id)
+        : await scopedTaskQuery;
+    tasks = data ?? [];
+  }
+
+  const taskProjectIds = Array.from(new Set(tasks.map((task) => task.project_id)));
+  const { data: projects } =
+    taskProjectIds.length > 0
+      ? await supabase.from("projects").select(projectTaskSelect).in("id", taskProjectIds)
+      : { data: [] as TaskProjectRow[] };
   const clientIds = Array.from(new Set(projects?.map((project) => project.client_id) ?? []));
   const { data: clients } =
     clientIds.length > 0
-      ? await supabase.from("clients").select("*").in("id", clientIds)
-      : { data: [] as ClientRow[] };
+      ? await supabase.from("clients").select(taskClientSelect).in("id", clientIds)
+      : { data: [] as TaskClientRow[] };
 
-  return ((tasks ?? []) as TaskSelectRow[])
+  return tasks
     .map((task) => mapTask(task, projects ?? [], clients ?? [], profile))
     .sort(compareByDueDate);
 }

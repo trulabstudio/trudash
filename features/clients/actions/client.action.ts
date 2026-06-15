@@ -13,6 +13,9 @@ import type { Database } from "@/types/database.type";
 
 type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
 
+const clientSelect =
+  "id,company_name,contact_person,email,phone_number,created_by_profile_id,login_access,account_status,created_at,updated_at";
+
 export type ClientActionState = {
   error?: string;
   success?: string;
@@ -52,12 +55,12 @@ export async function listClients(profile: Profile | null): Promise<Client[]> {
       : await createSupabaseClient();
 
   if (profile.role === "admin") {
-    const { data } = await supabase.from("clients").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase.from("clients").select(clientSelect).order("created_at", { ascending: false });
     return data?.map(mapClient) ?? [];
   }
 
   if (profile.role === "client" && profile.clientId) {
-    const { data } = await supabase.from("clients").select("*").eq("id", profile.clientId);
+    const { data } = await supabase.from("clients").select(clientSelect).eq("id", profile.clientId);
     return data?.map(mapClient) ?? [];
   }
 
@@ -75,11 +78,11 @@ export async function listClients(profile: Profile | null): Promise<Client[]> {
 
   const { data: assignedClients } =
     clientIds.length > 0
-      ? await supabase.from("clients").select("*").in("id", clientIds)
+      ? await supabase.from("clients").select(clientSelect).in("id", clientIds)
       : { data: [] as ClientRow[] };
   const { data: createdClients } = await supabase
     .from("clients")
-    .select("*")
+    .select(clientSelect)
     .eq("created_by_profile_id", profile.id);
   const clientsById = new Map<string, ClientRow>();
 

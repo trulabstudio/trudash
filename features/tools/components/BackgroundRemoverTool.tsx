@@ -1,7 +1,6 @@
 "use client";
 
 import { ImageIcon, Upload, Wand2, X } from "lucide-react";
-import { removeBackground } from "@imgly/background-removal";
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -166,6 +165,7 @@ export function BackgroundRemoverTool({ initialTokens, role, downloadCost }: Bac
     setRemovedUrl("");
 
     try {
+      const { removeBackground } = await import("@imgly/background-removal");
       const result = await removeBackground(file, {
         progress: (key, current, total) => {
           if (key.includes("fetch") && total) {

@@ -3,7 +3,20 @@ import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv, hasSupabaseServiceRoleKey } from "@/lib/supabase/env";
 import type { Database } from "@/types/database.type";
 
-type ToolSettingsRow = Database["public"]["Tables"]["tool_settings"]["Row"];
+type ToolSettingsRow = Pick<
+  Database["public"]["Tables"]["tool_settings"]["Row"],
+  | "default_client_tokens"
+  | "qr_download_cost"
+  | "background_remover_download_cost"
+  | "price_per_10_tokens_rm"
+  | "bank_name"
+  | "bank_account_number"
+  | "bank_account_name"
+  | "whatsapp_number"
+>;
+
+const toolSettingsSelect =
+  "id,default_client_tokens,qr_download_cost,background_remover_download_cost,price_per_10_tokens_rm,bank_name,bank_account_number,bank_account_name,whatsapp_number";
 
 export type ToolSettings = {
   defaultClientTokens: number;
@@ -48,7 +61,7 @@ export async function getToolSettings(): Promise<ToolSettings> {
   const supabase = hasSupabaseServiceRoleKey() ? createAdminClient() : await createClient();
   const { data, error } = await supabase
     .from("tool_settings")
-    .select("*")
+    .select(toolSettingsSelect)
     .eq("id", "default")
     .maybeSingle();
 

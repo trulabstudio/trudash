@@ -30,7 +30,12 @@ export async function TasksView() {
           description="Create a profile with this user's email in Users. It will link automatically on first login."
         />
       ) : (
-        <TasksListSection tasks={tasks} canUpdate={canUpdateTasks} canManage={canCreateTasks(profile)} />
+        <TasksListSection
+          tasks={tasks}
+          canUpdate={canUpdateTasks}
+          canManage={canCreateTasks(profile)}
+          canShare={profile?.role === "client"}
+        />
       )}
     </>
   );

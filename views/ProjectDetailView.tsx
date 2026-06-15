@@ -25,7 +25,7 @@ export async function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
         title="Project Detail"
         description="View project progress, task status, and delivery links."
       />
-      <ProjectDetailSection project={project} tasks={tasks} />
+      <ProjectDetailSection project={project} tasks={tasks} canShare={profile?.role === "client"} />
       {profile?.role === "admin" && project ? (
         <div className="mt-6">
           <ProjectAssignmentsSection

@@ -5,6 +5,7 @@ import { siteConfig } from "@/config/site";
 import "@/styles/globals.css";
 
 const inter = Inter({
+  display: "swap",
   subsets: ["latin"],
   variable: "--font-inter"
 });

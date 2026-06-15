@@ -6,6 +6,7 @@ create type public.project_status as enum ('not_started', 'in_progress', 'comple
 create type public.task_status as enum ('todo', 'in_progress', 'completed', 'blocked');
 create type public.notification_status as enum ('pending', 'sent', 'failed');
 create type public.tool_key as enum ('qr_generator', 'background_remover');
+create type public.share_resource_type as enum ('project', 'task');
 
 create table public.clients (
   id uuid primary key default gen_random_uuid(),
@@ -103,6 +104,19 @@ create table public.tool_settings (
   updated_at timestamptz not null default now()
 );
 
+create table public.share_links (
+  id uuid primary key default gen_random_uuid(),
+  token text not null unique,
+  resource_type public.share_resource_type not null,
+  resource_id uuid not null,
+  created_by_profile_id uuid not null references public.profiles(id) on delete cascade,
+  is_active boolean not null default true,
+  expires_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (resource_type, resource_id, created_by_profile_id)
+);
+
 insert into public.tool_settings (id)
 values ('default')
 on conflict (id) do nothing;
@@ -130,6 +144,9 @@ create index notification_events_status_idx on public.notification_events(status
 create index tool_download_events_profile_id_idx on public.tool_download_events(profile_id);
 create index tool_download_events_tool_idx on public.tool_download_events(tool);
 create index tool_download_events_profile_id_tool_idx on public.tool_download_events(profile_id, tool);
+create index share_links_token_idx on public.share_links(token);
+create index share_links_resource_idx on public.share_links(resource_type, resource_id);
+create index share_links_created_by_profile_id_idx on public.share_links(created_by_profile_id);
 
 create or replace view public.tool_download_counts as
 select
@@ -168,6 +185,10 @@ for each row execute function public.set_updated_at();
 
 create trigger tool_settings_set_updated_at
 before update on public.tool_settings
+for each row execute function public.set_updated_at();
+
+create trigger share_links_set_updated_at
+before update on public.share_links
 for each row execute function public.set_updated_at();
 
 create or replace function public.current_profile_id()
@@ -218,6 +239,7 @@ alter table public.tasks enable row level security;
 alter table public.notification_events enable row level security;
 alter table public.tool_download_events enable row level security;
 alter table public.tool_settings enable row level security;
+alter table public.share_links enable row level security;
 
 create policy "profiles_admin_all"
 on public.profiles
@@ -275,6 +297,20 @@ using (true);
 
 create policy "tool_settings_admin_all"
 on public.tool_settings
+for all
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "share_links_owner_all"
+on public.share_links
+for all
+to authenticated
+using (created_by_profile_id = public.current_profile_id())
+with check (created_by_profile_id = public.current_profile_id());
+
+create policy "share_links_admin_all"
+on public.share_links
 for all
 to authenticated
 using (public.is_admin())

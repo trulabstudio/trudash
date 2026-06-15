@@ -20,6 +20,13 @@ type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
 type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
 type TaskRow = Database["public"]["Tables"]["tasks"]["Row"];
 type ProjectAssignmentRow = Database["public"]["Tables"]["project_assignments"]["Row"];
+type ProjectClientRow = Pick<ClientRow, "id" | "company_name">;
+type ProjectProgressTaskRow = Pick<TaskRow, "project_id" | "status">;
+
+const projectSelect = "id,client_id,project_name,description,start_date,due_date,status,created_at,updated_at";
+const projectClientSelect = "id,company_name";
+const projectProgressTaskSelect = "project_id,status";
+const projectAssignmentSelect = "id,project_id,profile_id,created_at";
 
 export type ProjectActionState = {
   error?: string;
@@ -39,7 +46,7 @@ function mapProjectAssignment(row: ProjectAssignmentRow, profiles: Profile[]): P
   };
 }
 
-function mapProject(row: ProjectRow, clients: ClientRow[], tasks: TaskRow[]): Project {
+function mapProject(row: ProjectRow, clients: ProjectClientRow[], tasks: ProjectProgressTaskRow[]): Project {
   const projectTasks = tasks.filter((task) => task.project_id === row.id);
   const completedTasks = projectTasks.filter((task) => task.status === "completed").length;
 
@@ -87,7 +94,7 @@ export async function listProjects(profile: Profile | null): Promise<Project[]> 
   if (profile.role === "admin") {
     const { data } = await supabase
       .from("projects")
-      .select("*")
+      .select(projectSelect)
       .order("due_date", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false });
     projects = data ?? [];
@@ -96,7 +103,7 @@ export async function listProjects(profile: Profile | null): Promise<Project[]> 
   if (profile.role === "client" && profile.clientId) {
     const { data } = await supabase
       .from("projects")
-      .select("*")
+      .select(projectSelect)
       .eq("client_id", profile.clientId)
       .order("due_date", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false });
@@ -113,7 +120,7 @@ export async function listProjects(profile: Profile | null): Promise<Project[]> 
     if (projectIds.length > 0) {
       const { data } = await supabase
         .from("projects")
-        .select("*")
+        .select(projectSelect)
         .in("id", projectIds)
         .order("due_date", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false });
@@ -126,13 +133,13 @@ export async function listProjects(profile: Profile | null): Promise<Project[]> 
 
   const { data: clients } =
     clientIds.length > 0
-      ? await supabase.from("clients").select("*").in("id", clientIds)
-      : { data: [] as ClientRow[] };
+      ? await supabase.from("clients").select(projectClientSelect).in("id", clientIds)
+      : { data: [] as ProjectClientRow[] };
 
   const { data: tasks } =
     projectIds.length > 0
-      ? await supabase.from("tasks").select("*").in("project_id", projectIds)
-      : { data: [] as TaskRow[] };
+      ? await supabase.from("tasks").select(projectProgressTaskSelect).in("project_id", projectIds)
+      : { data: [] as ProjectProgressTaskRow[] };
 
   return projects
     .map((project) => mapProject(project, clients ?? [], tasks ?? []))
@@ -156,7 +163,7 @@ export async function listProjectAssignments(
   const supabase = await createSupabaseClient();
   const { data } = await supabase
     .from("project_assignments")
-    .select("*")
+    .select(projectAssignmentSelect)
     .eq("project_id", projectId)
     .order("created_at", { ascending: false });
 

@@ -2,6 +2,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { DeleteActionForm } from "@/components/shared/DeleteActionForm";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { taskStatusLabels } from "@/config/status";
+import { ShareLinkForm } from "@/features/sharing/components/ShareLinkForm";
 import { deleteTaskAction } from "@/features/tasks/actions/task.action";
 import { TaskStatusForm } from "@/features/tasks/components/TaskStatusForm";
 import type { Task } from "@/features/tasks/types/task.type";
@@ -10,9 +11,10 @@ type TasksListSectionProps = {
   tasks: Task[];
   canUpdate?: boolean;
   canManage?: boolean;
+  canShare?: boolean;
 };
 
-export function TasksListSection({ tasks, canUpdate = false, canManage = false }: TasksListSectionProps) {
+export function TasksListSection({ tasks, canUpdate = false, canManage = false, canShare = false }: TasksListSectionProps) {
   if (tasks.length === 0) {
     return (
       <EmptyState
@@ -65,6 +67,11 @@ export function TasksListSection({ tasks, canUpdate = false, canManage = false }
             ) : null}
           </dl>
           {canUpdate ? <TaskStatusForm task={task} /> : null}
+          {canShare && task.status === "completed" ? (
+            <div className="mt-4">
+              <ShareLinkForm resourceType="task" resourceId={task.id} label="Share Task" />
+            </div>
+          ) : null}
           {canManage ? (
             <div className="mt-4">
               <DeleteActionForm action={deleteTaskAction} fieldName="taskId" id={task.id} />

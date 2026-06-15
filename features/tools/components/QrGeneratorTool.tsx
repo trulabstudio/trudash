@@ -1,7 +1,6 @@
 "use client";
 
 import { Link2, QrCode } from "lucide-react";
-import QRCode from "qrcode";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -17,6 +16,10 @@ type QrGeneratorToolProps = {
   role: UserRole;
   downloadCost: number;
 };
+
+async function loadQRCode() {
+  return import("qrcode");
+}
 
 export function QrGeneratorTool({ initialTokens, role, downloadCost }: QrGeneratorToolProps) {
   const [url, setUrl] = useState("");
@@ -47,6 +50,7 @@ export function QrGeneratorTool({ initialTokens, role, downloadCost }: QrGenerat
     setLoading(true);
 
     try {
+      const QRCode = await loadQRCode();
       const qr = await QRCode.toDataURL(cleanUrl, {
         width: 800,
         margin: 2,
@@ -71,6 +75,8 @@ export function QrGeneratorTool({ initialTokens, role, downloadCost }: QrGenerat
     }
 
     try {
+      const QRCode = await loadQRCode();
+
       if (format === "svg") {
         const svg = await QRCode.toString(cleanUrl, {
           type: "svg",
