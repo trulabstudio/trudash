@@ -32,6 +32,8 @@ export async function TasksView() {
       ) : (
         <TasksListSection
           tasks={tasks}
+          projects={projects}
+          teamMembers={teamMembers}
           canUpdate={canUpdateTasks}
           canManage={canCreateTasks(profile)}
           canShare={profile?.role === "client"}

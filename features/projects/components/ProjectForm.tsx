@@ -4,8 +4,10 @@ import { useActionState } from "react";
 import { useForm } from "react-hook-form";
 
 import type { Client } from "@/features/clients/types/client.type";
-import { createProjectAction, type ProjectActionState } from "@/features/projects/actions/project.action";
+import { createProjectAction, updateProjectAction, type ProjectActionState } from "@/features/projects/actions/project.action";
 import type { ProjectFormValues } from "@/features/projects/schemas/project.schema";
+import type { Project } from "@/features/projects/types/project.type";
+import type { Profile } from "@/features/users/types/user.type";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
@@ -15,18 +17,28 @@ const initialState: ProjectActionState = {};
 
 type ProjectFormProps = {
   clients: Client[];
+  teamMembers?: Profile[];
+  project?: Project;
 };
 
-export function ProjectForm({ clients }: ProjectFormProps) {
-  const [state, action, isPending] = useActionState(createProjectAction, initialState);
+export function ProjectForm({ clients, teamMembers = [], project }: ProjectFormProps) {
+  const isEditing = Boolean(project);
+  const [state, action, isPending] = useActionState(isEditing ? updateProjectAction : createProjectAction, initialState);
   const { register } = useForm<ProjectFormValues>({
     defaultValues: {
-      status: "not_started"
+      clientId: project?.clientId ?? "",
+      assignedProfileId: "",
+      projectName: project?.projectName ?? "",
+      description: project?.description ?? "",
+      startDate: project?.startDate ?? "",
+      dueDate: project?.dueDate ?? "",
+      status: project?.status ?? "not_started"
     }
   });
 
   return (
     <form action={action} className="rounded-md border border-border bg-surface p-5 shadow-soft">
+      {project ? <input type="hidden" name="projectId" value={project.id} /> : null}
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="clientId">Client</Label>
@@ -48,6 +60,26 @@ export function ProjectForm({ clients }: ProjectFormProps) {
           <Label htmlFor="projectName">Project Name</Label>
           <Input id="projectName" {...register("projectName")} required />
         </div>
+        {!isEditing ? (
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="assignedProfileId">Assign Team Member</Label>
+            <select
+              id="assignedProfileId"
+              className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-foreground"
+              {...register("assignedProfileId")}
+            >
+              <option value="">Assign later in Project Team</option>
+              {teamMembers.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.fullName ?? member.email}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs leading-5 text-muted-foreground">
+              Tasks without a selected assignee will use this project's assigned team member.
+            </p>
+          </div>
+        ) : null}
         <div className="space-y-2">
           <Label htmlFor="startDate">Start Date</Label>
           <Input id="startDate" type="date" {...register("startDate")} />
@@ -77,7 +109,7 @@ export function ProjectForm({ clients }: ProjectFormProps) {
       {state.error ? <p className="mt-4 text-sm text-destructive">{state.error}</p> : null}
       {state.success ? <p className="mt-4 text-sm text-primary">{state.success}</p> : null}
       <Button type="submit" className="mt-5" disabled={isPending || clients.length === 0}>
-        {isPending ? "Creating" : "Create Project"}
+        {isPending ? "Saving" : isEditing ? "Save Project" : "Create Project"}
       </Button>
     </form>
   );

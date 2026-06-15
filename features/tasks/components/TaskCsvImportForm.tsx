@@ -169,7 +169,7 @@ export function TaskCsvImportForm({ projects }: TaskCsvImportFormProps) {
         <p className="text-sm font-semibold text-foreground">CSV columns</p>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           Required: {requiredHeaders.join(", ")}. Optional: {optionalHeaders.join(", ")}. Status values:
-          todo, in_progress, completed, blocked.
+          todo, in_progress, completed, blocked. Leave assigned_to_email blank to use the selected project's default team member.
         </p>
         <pre className="mt-3 overflow-x-auto rounded-sm bg-surface p-3 text-xs text-muted-foreground">{sampleCsv}</pre>
       </div>

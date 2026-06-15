@@ -1,18 +1,20 @@
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { listClients } from "@/features/clients/actions/client.action";
-import { listProjects } from "@/features/projects/actions/project.action";
-import { listTasks } from "@/features/tasks/actions/task.action";
-import { getCurrentProfile } from "@/features/users/actions/user.action";
+import { listDashboardProjectAssignments, listProjects } from "@/features/projects/actions/project.action";
+import { listDashboardTasks } from "@/features/tasks/actions/task.action";
+import { getCurrentProfile, listProfiles } from "@/features/users/actions/user.action";
 import { CoreOverviewSection } from "@/sections/dashboard/CoreOverviewSection";
 
 export async function DashboardOverviewView() {
   const profile = await getCurrentProfile();
-  const [clients, projects, tasks] = await Promise.all([
+  const [clients, projects, tasks, profiles] = await Promise.all([
     listClients(profile),
     listProjects(profile),
-    listTasks(profile)
+    listDashboardTasks(profile),
+    listProfiles(profile)
   ]);
+  const projectAssignments = await listDashboardProjectAssignments(profile, profiles);
   const header =
     profile?.role === "client"
       ? {
@@ -43,6 +45,8 @@ export async function DashboardOverviewView() {
           clients={clients}
           projects={projects}
           tasks={tasks}
+          profiles={profiles}
+          projectAssignments={projectAssignments}
         />
       )}
     </>

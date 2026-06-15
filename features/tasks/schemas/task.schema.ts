@@ -11,12 +11,21 @@ export const taskSchema = z.object({
   internalNotes: z.string().optional()
 });
 
+export const taskCreateSchema = taskSchema.omit({ projectId: true }).extend({
+  projectIds: z.array(z.string().uuid("Select a project.")).min(1, "Select at least one project.")
+});
+
 export const taskUpdateSchema = taskSchema.extend({
   taskId: z.string().uuid()
 });
 
 export const taskDeleteSchema = z.object({
   taskId: z.string().uuid()
+});
+
+export const taskBulkAssignSchema = z.object({
+  taskIds: z.array(z.string().uuid()).min(1, "Select at least one task."),
+  assignedToProfileId: z.string().uuid("Select a team member.")
 });
 
 export const taskStatusSchema = z.object({
@@ -44,6 +53,8 @@ export const taskCsvImportSchema = z.object({
 });
 
 export type TaskFormValues = z.infer<typeof taskSchema>;
+export type TaskCreateFormValues = z.infer<typeof taskCreateSchema>;
 export type TaskUpdateFormValues = z.infer<typeof taskUpdateSchema>;
+export type TaskBulkAssignFormValues = z.infer<typeof taskBulkAssignSchema>;
 export type TaskStatusFormValues = z.infer<typeof taskStatusSchema>;
 export type TaskCsvImportValues = z.infer<typeof taskCsvImportSchema>;

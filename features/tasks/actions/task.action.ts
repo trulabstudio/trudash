@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 
 import {
   taskCsvImportSchema,
+  taskBulkAssignSchema,
+  taskCreateSchema,
   taskDeleteSchema,
   taskSchema,
   taskStatusSchema,
@@ -74,6 +76,42 @@ function compareByDueDate(a: Task, b: Task) {
   return b.createdAt.localeCompare(a.createdAt);
 }
 
+async function mapTasksWithProjectContext(
+  supabase: Awaited<ReturnType<typeof createSupabaseClient>>,
+  tasks: TaskSelectRow[],
+  profile: Profile | null
+) {
+  const taskProjectIds = Array.from(new Set(tasks.map((task) => task.project_id)));
+  const { data: projects } =
+    taskProjectIds.length > 0
+      ? await supabase.from("projects").select(projectTaskSelect).in("id", taskProjectIds)
+      : { data: [] as TaskProjectRow[] };
+  const clientIds = Array.from(new Set(projects?.map((project) => project.client_id) ?? []));
+  const { data: clients } =
+    clientIds.length > 0
+      ? await supabase.from("clients").select(taskClientSelect).in("id", clientIds)
+      : { data: [] as TaskClientRow[] };
+
+  return tasks
+    .map((task) => mapTask(task, projects ?? [], clients ?? [], profile))
+    .sort(compareByDueDate);
+}
+
+async function getDefaultProjectAssigneeId(
+  supabase: Awaited<ReturnType<typeof createSupabaseClient>>,
+  projectId: string
+) {
+  const { data } = await supabase
+    .from("project_assignments")
+    .select("profile_id")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  return data?.profile_id ?? null;
+}
+
 export async function listTasks(profile: Profile | null, projectId?: string): Promise<Task[]> {
   if (!hasSupabaseEnv() || !profile) {
     return [];
@@ -125,20 +163,37 @@ export async function listTasks(profile: Profile | null, projectId?: string): Pr
     tasks = data ?? [];
   }
 
-  const taskProjectIds = Array.from(new Set(tasks.map((task) => task.project_id)));
-  const { data: projects } =
-    taskProjectIds.length > 0
-      ? await supabase.from("projects").select(projectTaskSelect).in("id", taskProjectIds)
-      : { data: [] as TaskProjectRow[] };
-  const clientIds = Array.from(new Set(projects?.map((project) => project.client_id) ?? []));
-  const { data: clients } =
-    clientIds.length > 0
-      ? await supabase.from("clients").select(taskClientSelect).in("id", clientIds)
-      : { data: [] as TaskClientRow[] };
+  return mapTasksWithProjectContext(supabase, tasks, profile);
+}
 
-  return tasks
-    .map((task) => mapTask(task, projects ?? [], clients ?? [], profile))
-    .sort(compareByDueDate);
+export async function listDashboardTasks(profile: Profile | null): Promise<Task[]> {
+  if (!hasSupabaseEnv() || !profile) {
+    return [];
+  }
+
+  if (profile.role !== "team_member") {
+    return listTasks(profile);
+  }
+
+  const supabase = await createSupabaseClient();
+  const { data: assignments } = await supabase
+    .from("project_assignments")
+    .select("project_id")
+    .eq("profile_id", profile.id);
+  const projectIds = assignments?.map((assignment) => assignment.project_id) ?? [];
+
+  if (projectIds.length === 0) {
+    return [];
+  }
+
+  const { data } = await supabase
+    .from("tasks")
+    .select(taskSelect)
+    .in("project_id", projectIds)
+    .order("due_date", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: false });
+
+  return mapTasksWithProjectContext(supabase, data ?? [], profile);
 }
 
 export async function createTaskAction(_: TaskActionState, formData: FormData): Promise<TaskActionState> {
@@ -148,8 +203,12 @@ export async function createTaskAction(_: TaskActionState, formData: FormData): 
     return { error: "Only Admin users can create tasks." };
   }
 
-  const parsed = taskSchema.safeParse({
-    projectId: formData.get("projectId"),
+  const projectIds = formData
+    .getAll("projectIds")
+    .map((value) => value.toString())
+    .filter(Boolean);
+  const parsed = taskCreateSchema.safeParse({
+    projectIds: projectIds.length > 0 ? projectIds : [formData.get("projectId")?.toString() ?? ""],
     assignedToProfileId: formData.get("assignedToProfileId"),
     taskName: formData.get("taskName"),
     description: formData.get("description"),
@@ -164,16 +223,35 @@ export async function createTaskAction(_: TaskActionState, formData: FormData): 
   }
 
   const supabase = await createSupabaseClient();
-  const { error } = await supabase.from("tasks").insert({
-    project_id: parsed.data.projectId,
-    assigned_to_profile_id: parsed.data.assignedToProfileId || null,
-    task_name: parsed.data.taskName,
-    description: parsed.data.description || null,
-    due_date: parsed.data.dueDate || null,
-    status: parsed.data.status,
-    final_link: parsed.data.finalLink || null,
-    internal_notes: parsed.data.internalNotes || null
-  });
+  const defaultAssignees = new Map(
+    await Promise.all(
+      parsed.data.projectIds.map(async (projectId) => [
+        projectId,
+        await getDefaultProjectAssigneeId(supabase, projectId)
+      ] as const)
+    )
+  );
+
+  if (!parsed.data.assignedToProfileId) {
+    const hasProjectWithoutAssignee = parsed.data.projectIds.some((projectId) => !defaultAssignees.get(projectId));
+
+    if (hasProjectWithoutAssignee) {
+      return { error: "Assign a team member to every selected project first, or choose an Assigned Team Member." };
+    }
+  }
+
+  const { error } = await supabase.from("tasks").insert(
+    parsed.data.projectIds.map((projectId) => ({
+      project_id: projectId,
+      assigned_to_profile_id: parsed.data.assignedToProfileId || defaultAssignees.get(projectId) || null,
+      task_name: parsed.data.taskName,
+      description: parsed.data.description || null,
+      due_date: parsed.data.dueDate || null,
+      status: parsed.data.status,
+      final_link: parsed.data.finalLink || null,
+      internal_notes: parsed.data.internalNotes || null
+    }))
+  );
 
   if (error) {
     return { error: error.message };
@@ -181,7 +259,7 @@ export async function createTaskAction(_: TaskActionState, formData: FormData): 
 
   revalidatePath("/dashboard/tasks");
   revalidatePath("/dashboard/projects");
-  return { success: "Task created." };
+  return { success: parsed.data.projectIds.length > 1 ? `${parsed.data.projectIds.length} tasks created.` : "Task created." };
 }
 
 export async function importTasksCsvAction(_: TaskActionState, formData: FormData): Promise<TaskActionState> {
@@ -231,12 +309,18 @@ export async function importTasksCsvAction(_: TaskActionState, formData: FormDat
     return { error: `Assigned team member not found: ${missingAssignees.slice(0, 3).join(", ")}` };
   }
 
+  const defaultAssigneeId = await getDefaultProjectAssigneeId(supabase, parsed.data.projectId);
+
+  if (!defaultAssigneeId && parsed.data.rows.some((row) => !row.assignedToEmail)) {
+    return { error: "Assign a team member to this project first, or fill assigned_to_email for every CSV row." };
+  }
+
   const { error } = await supabase.from("tasks").insert(
     parsed.data.rows.map((row) => ({
       project_id: parsed.data.projectId,
       assigned_to_profile_id: row.assignedToEmail
         ? assigneesByEmail.get(row.assignedToEmail.trim().toLowerCase()) ?? null
-        : null,
+        : defaultAssigneeId,
       task_name: row.taskName,
       description: row.description || null,
       due_date: row.dueDate || null,
@@ -323,11 +407,18 @@ export async function updateTaskAction(_: TaskActionState, formData: FormData): 
   }
 
   const supabase = await createSupabaseClient();
+  const assignedToProfileId =
+    parsed.data.assignedToProfileId || (await getDefaultProjectAssigneeId(supabase, parsed.data.projectId));
+
+  if (!assignedToProfileId) {
+    return { error: "Assign a team member to this project first, or choose an Assigned Team Member." };
+  }
+
   const { error } = await supabase
     .from("tasks")
     .update({
       project_id: parsed.data.projectId,
-      assigned_to_profile_id: parsed.data.assignedToProfileId || null,
+      assigned_to_profile_id: assignedToProfileId,
       task_name: parsed.data.taskName,
       description: parsed.data.description || null,
       due_date: parsed.data.dueDate || null,
@@ -344,6 +435,55 @@ export async function updateTaskAction(_: TaskActionState, formData: FormData): 
   revalidatePath("/dashboard/tasks");
   revalidatePath("/dashboard/projects");
   return { success: "Task details updated." };
+}
+
+export async function bulkAssignTasksAction(_: TaskActionState, formData: FormData): Promise<TaskActionState> {
+  const profile = await import("@/features/users/actions/user.action").then((mod) => mod.getCurrentProfile());
+
+  if (!canCreateTasks(profile)) {
+    return { error: "Only Admin users can assign tasks." };
+  }
+
+  const parsed = taskBulkAssignSchema.safeParse({
+    taskIds: formData
+      .getAll("taskIds")
+      .map((value) => value.toString())
+      .filter(Boolean),
+    assignedToProfileId: formData.get("assignedToProfileId")
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Invalid task assignment." };
+  }
+
+  const supabase = await createSupabaseClient();
+  const { data: assignee } = await supabase
+    .from("profiles")
+    .select("id,role")
+    .eq("id", parsed.data.assignedToProfileId)
+    .eq("role", "team_member")
+    .maybeSingle();
+
+  if (!assignee) {
+    return { error: "Select a valid Team Member." };
+  }
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({
+      assigned_to_profile_id: parsed.data.assignedToProfileId,
+      updated_at: new Date().toISOString()
+    })
+    .in("id", parsed.data.taskIds);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/dashboard/tasks");
+  revalidatePath("/dashboard/projects");
+  revalidatePath("/dashboard");
+  return { success: `${parsed.data.taskIds.length} task${parsed.data.taskIds.length === 1 ? "" : "s"} assigned.` };
 }
 
 export async function deleteTaskAction(_: TaskActionState, formData: FormData): Promise<TaskActionState> {

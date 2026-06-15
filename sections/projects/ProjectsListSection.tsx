@@ -5,14 +5,17 @@ import { DeleteActionForm } from "@/components/shared/DeleteActionForm";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { projectStatusLabels } from "@/config/status";
 import { deleteProjectAction } from "@/features/projects/actions/project.action";
+import { ProjectForm } from "@/features/projects/components/ProjectForm";
 import type { Project } from "@/features/projects/types/project.type";
+import type { Client } from "@/features/clients/types/client.type";
 
 type ProjectsListSectionProps = {
   projects: Project[];
+  clients?: Client[];
   canManage?: boolean;
 };
 
-export function ProjectsListSection({ projects, canManage = false }: ProjectsListSectionProps) {
+export function ProjectsListSection({ projects, clients = [], canManage = false }: ProjectsListSectionProps) {
   if (projects.length === 0) {
     return (
       <EmptyState
@@ -55,9 +58,13 @@ export function ProjectsListSection({ projects, canManage = false }: ProjectsLis
             </div>
           </div>
           {canManage ? (
-            <div className="mt-4">
-              <DeleteActionForm action={deleteProjectAction} fieldName="projectId" id={project.id} />
-            </div>
+            <details className="mt-4 rounded-md border border-border bg-muted p-3">
+              <summary className="cursor-pointer text-sm font-medium text-foreground">Edit project</summary>
+              <div className="mt-4 grid gap-3">
+                <ProjectForm clients={clients} project={project} />
+                <DeleteActionForm action={deleteProjectAction} fieldName="projectId" id={project.id} />
+              </div>
+            </details>
           ) : null}
         </article>
       ))}

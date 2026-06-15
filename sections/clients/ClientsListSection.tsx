@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DeleteActionForm } from "@/components/shared/DeleteActionForm";
 import { accountStatusLabels } from "@/config/status";
 import { deleteClientAction } from "@/features/clients/actions/client.action";
+import { ClientForm } from "@/features/clients/components/ClientForm";
 import type { Client } from "@/features/clients/types/client.type";
 
 type ClientsListSectionProps = {
@@ -52,9 +53,13 @@ export function ClientsListSection({ clients, canManage = false }: ClientsListSe
               </div>
             </dl>
             {canManage ? (
-              <div className="mt-4">
-                <DeleteActionForm action={deleteClientAction} fieldName="clientId" id={client.id} />
-              </div>
+              <details className="mt-4 rounded-md border border-border bg-muted p-3">
+                <summary className="cursor-pointer text-sm font-medium text-foreground">Edit client</summary>
+                <div className="mt-4 grid gap-3">
+                  <ClientForm client={client} />
+                  <DeleteActionForm action={deleteClientAction} fieldName="clientId" id={client.id} />
+                </div>
+              </details>
             ) : null}
           </article>
         ))}
@@ -88,7 +93,13 @@ export function ClientsListSection({ clients, canManage = false }: ClientsListSe
                 </td>
                 {canManage ? (
                   <td className="px-4 py-3">
-                    <DeleteActionForm action={deleteClientAction} fieldName="clientId" id={client.id} />
+                    <details className="min-w-60 rounded-md border border-border bg-muted p-3">
+                      <summary className="cursor-pointer text-sm font-medium text-foreground">Edit</summary>
+                      <div className="mt-4 grid gap-3">
+                        <ClientForm client={client} />
+                        <DeleteActionForm action={deleteClientAction} fieldName="clientId" id={client.id} />
+                      </div>
+                    </details>
                   </td>
                 ) : null}
               </tr>

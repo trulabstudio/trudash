@@ -170,6 +170,23 @@ export async function listProjectAssignments(
   return data?.map((assignment) => mapProjectAssignment(assignment, profiles)) ?? [];
 }
 
+export async function listDashboardProjectAssignments(
+  profile: Profile | null,
+  profiles: Profile[]
+): Promise<ProjectAssignment[]> {
+  if (!hasSupabaseEnv() || profile?.role !== "admin") {
+    return [];
+  }
+
+  const supabase = await createSupabaseClient();
+  const { data } = await supabase
+    .from("project_assignments")
+    .select(projectAssignmentSelect)
+    .order("created_at", { ascending: false });
+
+  return data?.map((assignment) => mapProjectAssignment(assignment, profiles)) ?? [];
+}
+
 export async function createProjectAction(
   _: ProjectActionState,
   formData: FormData
@@ -182,6 +199,7 @@ export async function createProjectAction(
 
   const parsed = projectSchema.safeParse({
     clientId: formData.get("clientId"),
+    assignedProfileId: formData.get("assignedProfileId"),
     projectName: formData.get("projectName"),
     description: formData.get("description"),
     startDate: formData.get("startDate"),
@@ -194,17 +212,37 @@ export async function createProjectAction(
   }
 
   const supabase = await createSupabaseClient();
-  const { error } = await supabase.from("projects").insert({
-    client_id: parsed.data.clientId,
-    project_name: parsed.data.projectName,
-    description: parsed.data.description || null,
-    start_date: parsed.data.startDate || null,
-    due_date: parsed.data.dueDate || null,
-    status: parsed.data.status
-  });
+  const { data: project, error } = await supabase
+    .from("projects")
+    .insert({
+      client_id: parsed.data.clientId,
+      project_name: parsed.data.projectName,
+      description: parsed.data.description || null,
+      start_date: parsed.data.startDate || null,
+      due_date: parsed.data.dueDate || null,
+      status: parsed.data.status
+    })
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     return { error: error.message };
+  }
+
+  if (parsed.data.assignedProfileId && project) {
+    const { error: assignmentError } = await supabase.from("project_assignments").upsert(
+      {
+        project_id: project.id,
+        profile_id: parsed.data.assignedProfileId
+      },
+      {
+        onConflict: "project_id,profile_id"
+      }
+    );
+
+    if (assignmentError) {
+      return { error: assignmentError.message };
+    }
   }
 
   revalidatePath("/dashboard/projects");

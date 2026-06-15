@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const projectSchema = z.object({
   clientId: z.string().uuid("Select a client."),
+  assignedProfileId: z.string().uuid("Select a team member.").optional().or(z.literal("")),
   projectName: z.string().min(2, "Project name is required."),
   description: z.string().optional(),
   startDate: z.string().optional(),
@@ -9,7 +10,7 @@ export const projectSchema = z.object({
   status: z.enum(["not_started", "in_progress", "completed", "on_hold"]).default("not_started")
 });
 
-export const projectUpdateSchema = projectSchema.extend({
+export const projectUpdateSchema = projectSchema.omit({ assignedProfileId: true }).extend({
   projectId: z.string().uuid()
 });
 
